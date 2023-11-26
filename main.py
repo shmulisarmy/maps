@@ -1,14 +1,12 @@
 from collections import defaultdict
 import time
 import pygame
+import math
+import sys
+import json
 
-def display(two_d_array):
-    for row in two_d_array:
-        #print('\n' + '-'*60, end = '\n| ')
-        for col in row:
-            #print(str(col).center(3), end = ' | ')
-            pass
-    #print('\n' + '-'*60)
+def smooth_transition(i, num_elements):
+    return int(127.5 * (1 + math.cos(math.radians(i * (360 / num_elements)))))
 
 def converge():
     global is_heading_back
@@ -63,7 +61,7 @@ def boiler():
         for event in  pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
-        window.fill('black')
+        window.fill((173, 216, 230))
         draw_maxtrix()
         pygame.display.update()
 
@@ -74,35 +72,40 @@ def draw_maxtrix():
                     pygame.draw.rect(window, (0, 0, 255), pygame.Rect(pixel_size_x * j, pixel_size_y * i, pixel_size_x, pixel_size_y))
                 elif path[i][j] == 's':
                     pygame.draw.rect(window, (100, 0, 100), pygame.Rect(pixel_size_x * j, pixel_size_y * i, pixel_size_x, pixel_size_y))
-                else:
+                elif col:
                     #print(i, j, col)
                     pygame.draw.rect(window, colors[col%len(colors)], pygame.Rect(pixel_size_x * j, pixel_size_y * i, pixel_size_x, pixel_size_y))
-                if directional_map_2[i][j]:
-                    val = directional_map_2[i][j]
-                    if 's' in val:
-                        pygame.draw.rect(window, (255, 255, 0), pygame.Rect(pixel_size_x * j, pixel_size_y * i, pixel_size_x, pixel_size_y))
-                    if 'd' in val:
-                        pygame.draw.rect(window, (255, 0, 255), pygame.Rect(pixel_size_x * j, pixel_size_y * i, pixel_size_x, pixel_size_y))
                 if (i, j) in heading_back:
                     pygame.draw.rect(window, (0, 255, 0), pygame.Rect(pixel_size_x * j, pixel_size_y * i, pixel_size_x, pixel_size_y))
 
-                if mapp[i][j] == 2:
-                    pygame.draw.rect(window, (255, 255, 255), pygame.Rect(pixel_size_x * (j + .2), pixel_size_y * (i + .2), pixel_size_x*6/10, pixel_size_y*6/10))
+                if directional_map_2[i][j]:
+                    val = directional_map_2[i][j]
+                    for dr in val:
+                        window.blit(arrows[dr], (pixel_size_x * j, pixel_size_y * i))
 
+                if other_image_map[i][j]:
+                    val = other_image_map[i][j]
+                    for image in val:
+                        window.blit(images[image], (pixel_size_x * j, pixel_size_y * i))
                 
+                if mapp[i][j] == 4:
+                    pygame.draw.rect(window, (255, 255, 255), pygame.Rect(pixel_size_x * (j + .2), pixel_size_y * (i + .2), pixel_size_x*6/10, pixel_size_y*6/10))
+                if mapp[i][j] == 1:
+                    pygame.draw.rect(window, (255, 0, 40), pygame.Rect(pixel_size_x * (j + .2), pixel_size_y * (i + .2), pixel_size_x*6/10, pixel_size_y*6/10))
 
-                # pygame.draw.rect(window, colors[(col-1)%len(colors)], pygame.Rect(pixel_size_x * j, pixel_size_y * i, pixel_size_x, pixel_size_y))
-
-
-map_size = 70
-mapp = [[1] * map_size for i in range(map_size)]
+map_size = 30
+if len(sys.argv) > 1:
+    map_size = int(sys.argv[1])
+mapp = [[2] * map_size for i in range(map_size)]
 directional_map = [[[] for j in range(map_size)] for i in range(map_size)]
 directional_map_2 = [[[] for j in range(map_size)] for i in range(map_size)]
+other_image_map = [[[] for j in range(map_size)] for i in range(map_size)]
+
 for i in range(map_size-1):
     directional_map[i][0].append((i + 1, 0))
     directional_map[-1][i].append((-1, i + 1))
-    directional_map_2[i][0].append('s')
-    directional_map_2[-1][i].append('d')
+    directional_map_2[i][0].append('down')
+    directional_map_2[-1][i].append('right')
 
 path_is_complete = False
 path = [[0] * map_size for i in range(map_size)]
@@ -113,10 +116,18 @@ is_heading_back = False
 heading_back = [(map_size-1, map_size-1)]
 #pygame code
 pygame.init()
+clock = pygame.time.Clock()
 width, height = 800, 800
 pixel_size_x, pixel_size_y = width//len(mapp[0]), height//len(mapp)
 window = pygame.display.set_mode((width, height))
-colors = [(i*2, 0, i*2) for i in range(100)]
+up_to_building_number = 1
+
+num_elements = map_size*4
+colors = [(smooth_transition(i, num_elements), smooth_transition(2*i, num_elements), smooth_transition(4*i, num_elements)) for i in range(num_elements)]
+
+arrows = {dr: pygame.transform.scale(pygame.image.load(f'assets/{dr}_arrow.png'), (pixel_size_x, pixel_size_y)) for dr in ['left', 'down', 'right', 'up']}
+images = {image: pygame.transform.scale(pygame.image.load(f'assets/{image}.png'), (pixel_size_x * 2, pixel_size_y * 2)) for image in ['tree', 'grass', 'house']}
+images.update({f"building{i}": pygame.transform.scale(pygame.image.load(f'assets/building{i}.png'), (pixel_size_x * 10, pixel_size_y * 10)) for i in range(1, 9)})
 
 
 
@@ -128,23 +139,57 @@ path[-1][-1] = 'e'
 while True:
     boiler()
 
+    mx, my = pygame.mouse.get_pos()
+    row, col = my//pixel_size_y, mx//pixel_size_x
+
     keys = pygame.key.get_pressed()
 
-    if keys[pygame.K_s] or keys[pygame.K_d]:
-        mx, my = pygame.mouse.get_pos()
-        row, col = my//pixel_size_y, mx//pixel_size_x
-        directional_map_2[row][col].append('s' if keys[pygame.K_s] else 'd')
-        directional_map[row][col].append((row, col+1) if keys[pygame.K_d] else (row+1, col))
-    
+    if keys[pygame.K_s]:
+        directional_map_2[row][col].append('down')
+        directional_map[row][col].append((row+1, col))
+    if keys[pygame.K_d]:
+         directional_map_2[row][col].append('right')
+         directional_map[row][col].append((row, col+1))
+    if keys[pygame.K_w]:
+        directional_map_2[row][col].append('up')
+        directional_map[row][col].append((row-1, col))
+    if keys[pygame.K_a]:
+         directional_map_2[row][col].append('left')
+         directional_map[row][col].append((row, col-1))
+
+    if keys[pygame.K_t]:
+         other_image_map[row][col].append('tree')
+    if keys[pygame.K_h]:
+         other_image_map[row][col].append('house')
+    if keys[pygame.K_g]:
+         other_image_map[row][col].append('grass')
+    if keys[pygame.K_b]:
+         other_image_map[row][col].append(f'building{up_to_building_number}')
+         up_to_building_number += 1
+         time.sleep(.2)
+
+    if keys[pygame.K_x]:
+        with open('save_map.txt', 'w') as file:
+            file.write(json.dumps({'1': directional_map, '2': directional_map_2, '3': other_image_map}))
+        
+    if keys[pygame.K_y]:
+        with open('save_map.txt', 'r') as file:
+            dictionary = json.loads(file.read())
+            directional_map, directional_map_2, other_image_map = (dictionary[i] for i in dictionary)
+      
+
     if pygame.mouse.get_pressed()[0]:
-        mx, my = pygame.mouse.get_pos()
-        row, col = my//pixel_size_y, mx//pixel_size_x
-        mapp[row][col] = 2
+        mapp[row][col] = 4
+
+    if keys[pygame.K_f]:
+        mapp[row][col] = 1
     
     if keys[pygame.K_SPACE]:
         break
 
 while True:
+    clock.tick(map_size//2)
+    print('path: ', path)
     # display(path)
     boiler()
     if is_heading_back:
