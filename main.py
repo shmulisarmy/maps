@@ -62,6 +62,7 @@ def boiler():
             if event.type == pygame.QUIT:
                 pygame.quit()
         window.fill((173, 216, 230))
+        window.fill('white')
         draw_maxtrix()
         pygame.display.update()
 
