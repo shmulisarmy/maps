@@ -168,6 +168,12 @@ while True:
          up_to_building_number += 1
          time.sleep(.2)
 
+    if keys[pygame.K_c]:
+        mapp[row][col] = 2
+        directional_map[row][col].clear()
+        directional_map_2[row][col].clear()
+        other_image_map[row][col].clear()
+
     if keys[pygame.K_x]:
         with open('save_map.txt', 'w') as file:
             file.write(json.dumps({'1': directional_map, '2': directional_map_2, '3': other_image_map}))
@@ -176,7 +182,7 @@ while True:
         with open('save_map.txt', 'r') as file:
             dictionary = json.loads(file.read())
             directional_map, directional_map_2, other_image_map = (dictionary[i] for i in dictionary)
-      
+    
 
     if pygame.mouse.get_pressed()[0]:
         mapp[row][col] = 4
